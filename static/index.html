@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="de">
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+		<meta charset="utf-8">
+		<title>Cache Size tester</title>
+
+		<link rel="stylesheet" type="text/css" href="milligram.css">
+		<link rel="stylesheet" type="text/css" href="css.css">
+	</head>
+
+	<body>
+		<div class="container">
+			<button class="button button-outline" rel="test1" onclick="changeTest('test1')">Chunk size</button>
+			<button class="button button-outline" rel="test2" onclick="changeTest('test2')">Cache size</button>
+			<hr>
+
+			<div id="test1">
+				<h2>Max chunk size</h2>
+
+				<div class="row">
+					<div class="column">
+
+
+						<div class="row row-direction row-nowrap row-baseline">
+							<label class="column label-inline" for="chunk_start_size">Start from</label>
+							<input class="column" type="number" id="chunk_start_size" value="40">
+							<select class="column" id="chunk_start_unit">
+								<option value="B">Byte</option>
+								<option value="kB">Kilobyte</option>
+								<option value="MB" selected>Megabyte</option>
+							</select>
+						</div>
+
+						<br>(Not cached chunks don't affect max cache size.)<br><br>
+					</div>
+
+					<div class="column">
+						<div class="row row-direction row-nowrap row-baseline">
+							<label class="column label-inline" for="chunk_step_size">Stepsize</label>
+							<input class="column" type="number" id="chunk_step_size" value="5">
+							<select class="column" id="chunk_step_unit">
+								<option value="B">Byte</option>
+								<option value="kB">Kilobyte</option>
+								<option value="MB" selected>Megabyte</option>
+							</select>
+						</div>
+					</div>
+				</div>
+
+				<button class="button button-outline" id="btnDetectSize">Start</button>
+				<button class="button button-outline" id="btnDetectSizeStop" style="display: none">Stop</button>
+			</div>
+			
+			<div id="test2">
+				<h2>Cache size test</h2>
+				<div class="row">
+					<div class="column">
+						<div class="row row-direction row-nowrap row-baseline">
+							<label class="column label-inline" for="min_size">Min Size</label>
+							<input class="column" type="number" id="min_size" value="1">
+							<select class="column" id="min_unit">
+								<option value="B">Byte</option>
+								<option value="kB">Kilobyte</option>
+								<option value="MB" selected>Megabyte</option>
+							</select>
+						</div>
+					</div>
+
+					<div class="column">
+						<div class="row row-direction row-nowrap row-baseline">
+							<label class="column label-inline" for="max_size">Max Size</label>
+							<input class="column" type="number" id="max_size" value="5">
+							<select class="column" id="max_unit">
+								<option value="B">Byte</option>
+								<option value="kB">Kilobyte</option>
+								<option value="MB" selected>Megabyte</option>
+							</select>
+						</div>
+					</div>
+				</div>
+
+				<br>(Be sure, max size is lower than max possible chunk size, and your cache is cleared!)<br><br>
+				
+				<button id="btnStart" class="button button-outline">startTest</button>
+				<button id="btnStop" class="button button-outline" style="display: none;">stop</button>
+			</div>
+			<hr>
+
+			<div class="console">
+				<pre>
+					<code>
+						
+					</code>
+				</pre>
+			</div>
+		</div>
+		<script>
+var headerFields = {
+	"cc":"Cache-Control",
+	"et":"ETag",
+	"ex":"Expires",
+	"va":"Vary",
+	"ac" : "Accept",
+	"al" : "Accept-Language",
+	"lm":"Last-Modified",
+	"ims": "If-Modified-Since",
+	"ius": "If-Unmodified-Since",
+	"im" : "If-Match",
+	"inm": "If-None-Match",
+	"pragma": "Pragma",
+	"az": "Authorization",
+	"ir": "If-Range",
+	"ra": "Range",
+	"id" : "X-Id",
+	"exp" : "Expires",
+	"sc" : "Set-Cookie",
+	"chunk_size_min" : "X-Chunk-Size-Min",
+	"chunk_size_max" : "X-Chunk-Size-Max",
+};
+
+/**
+ * Log to HTMLElement
+ * @param {string} msg
+ * @param {string} status
+ */
+function log(msg, status) {
+	var console = document.querySelector('.console code');
+	var div = document.createElement('div');
+	div.className = "log " + (status ? status : "");
+	div.innerHTML = '<span class="date">' + +new Date() + ":</span> " + msg;
+	console.insertAdjacentElement('afterbegin', div);
+};
+
+/**
+ * Header-String to Object
+ * @param {string} header
+ * @reutn {Object}}
+ */
+function parseHeader(header){
+	//TODO parsing with spaces
+	var headerArray = header.split(";");
+	var response = {};
+	for (var i = 0; i < headerArray.length; i++) {
+		var headerFieldArray = headerArray[i].split(":");
+		if(headerFieldArray.length == 2){
+			response[headerFieldArray[0]] = headerFieldArray[1];
+		}
+	}
+
+	return response;
+};
+
+function changeTest(id) {
+	var test1 = document.getElementById('test1');
+	var test2 = document.getElementById('test2');
+	var btn1 = document.querySelector('button[rel="test1"]');
+	var btn2 = document.querySelector('button[rel="test2"]');
+
+	if(id == "test1") {
+		test1.style.display = "block";
+		test2.style.display = "none";
+		btn1.classList.remove("button-outline");
+		btn2.classList.add("button-outline");
+	} else {
+		test1.style.display = "none";
+		test2.style.display = "block";
+		btn1.classList.add("button-outline");
+		btn2.classList.remove("button-outline");
+	}
+	try {
+		localStorage.setItem('cache-size-test-id', JSON.stringify(id));
+	} catch(e) {}
+}
+
+try {
+	var value = JSON.parse(localStorage.getItem('cache-size-test-id'));
+	if(value == null) {
+		value = "test1";
+	}
+	changeTest(value);
+} catch (e) { console.error(e); }
+		</script>
+
+		<script src="js/autoSaveInput.js"></script>
+		<script src="js/Request.js"></script>
+		<script src="js/Tester.js"></script>
+	</body>
+</html>

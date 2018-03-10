@@ -1,0 +1,36 @@
+.container {
+	max-width: none;
+}
+.console,
+.output {
+	overflow: auto;
+	max-height: 80vh;
+}
+.console .green, .success {
+	color: green;	
+}
+.console .red, .danger {
+	color: red;
+}
+.console .info {
+	color: blue;
+}
+.console .gray {
+	color: gray;
+}
+.log {
+	display: flex;
+}
+.mono {
+	font-family: monospace;
+}
+.label-inline {
+	text-align: right;
+}
+
+.row-direction {
+	flex-direction: row;
+}
+.row.row-nowrap {
+	flex-wrap: nowrap;
+}
